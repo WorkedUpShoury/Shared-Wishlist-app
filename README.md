@@ -1,7 +1,3 @@
-Understood\! I'll remove "FlockShop" and use "Shared-Wishlist-App" instead.
-
------
-
 ## Simple Description
 
 The **Shared-Wishlist-App** is a web application that empowers users to create and manage personalized wishlists of desired products. Beyond just personal use, it features robust **collaboration capabilities**, allowing users to invite others to view and contribute to their wishlists in real-time. Built with a modern **MERN stack** (MongoDB, Express, React, Node.js), Shared-Wishlist-App provides a seamless and interactive experience for curating and sharing product aspirations.
