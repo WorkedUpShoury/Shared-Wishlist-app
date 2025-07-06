@@ -11,26 +11,30 @@ router.post('/wishlists/:wishlistId/products', authMiddleware, async (req, res) 
     const { productName, productImage, price } = req.body;
     const { wishlistId } = req.params;
 
-    // Make sure user is a member of the wishlist
     const wishlist = await Wishlist.findById(wishlistId);
-    if (!wishlist || !wishlist.members.includes(req.user.userId)) {
+    if (!wishlist || !wishlist.collaborators.includes(req.user.userId)) {
       return res.status(403).json({ message: 'You are not authorized to add to this wishlist' });
     }
 
-    // Create and save product
     const newProduct = new Product({
       productName,
       productImage,
       price,
       wishlistId,
-      addedBy: req.user.userId
+      addedBy: req.user.userId,
     });
 
     const savedProduct = await newProduct.save();
 
-    // Add product to wishlist's product array
     wishlist.products.push(savedProduct._id);
     await wishlist.save();
+
+    // Emit to all users in this wishlist room
+    const io = req.app.get('io');
+    io.to(wishlistId).emit('product_added', {
+      ...savedProduct._doc,
+      wishlistId,
+    });
 
     res.status(201).json(savedProduct);
   } catch (err) {
@@ -68,11 +72,10 @@ router.delete('/:productId', authMiddleware, async (req, res) => {
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
     const wishlist = await Wishlist.findById(product.wishlistId);
-    if (!wishlist || !wishlist.members.includes(req.user.userId)) {
+    if (!wishlist || !wishlist.collaborators.includes(req.user.userId)) {
       return res.status(403).json({ message: 'You are not authorized to delete from this wishlist' });
     }
 
-    // Remove product ID from wishlist's product array
     wishlist.products = wishlist.products.filter(
       id => String(id) !== String(product._id)
     );
@@ -80,6 +83,46 @@ router.delete('/:productId', authMiddleware, async (req, res) => {
 
     await product.deleteOne();
     res.json({ message: 'Product deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// POST /api/products/:productId/comments
+// Add a comment to a product
+router.post('/:productId/comments', authMiddleware, async (req, res) => {
+  try {
+    const { text } = req.body;
+    const { productId } = req.params;
+
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    const comment = {
+      text,
+      user: req.user.userId,
+      createdAt: new Date()
+    };
+
+    product.comments.push(comment);
+    await product.save();
+
+    res.status(201).json(product.comments[product.comments.length - 1]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/products/:productId/comments
+// Get all comments for a product
+router.get('/:productId/comments', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const product = await Product.findById(productId).populate('comments.user', 'username');
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    res.json(product.comments);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
