@@ -1,0 +1,14 @@
+/* components/Login.css */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 320px;
+  margin: 3rem auto;
+}
+
+.login-form input,
+.login-form button {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
